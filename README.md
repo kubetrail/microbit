@@ -23,6 +23,11 @@ tinygo flash -target microbit-v2 -port /dev/ttyACMO
 ```
 
 ## usage
+Different actions, such as display, buzzer and temperature readout, are performed
+asynchronously and tied together using `context`. These `context` values are
+cancelled on events such as button press.
+
+### display patterns and buzzer
 Example code below displays three different patterns on LED matrix along
 with buzzer buzzing at different tones that change on button press.
 ```go
@@ -30,8 +35,7 @@ package main
 
 import (
 	"context"
-	"time"
-
+	
 	"github.com/kubetrail/microbit"
 )
 
@@ -41,33 +45,13 @@ func main() {
 
 	// get context that will cancel on either button A or button B press
 	ctx := device.OnButtonPress()
+	device.SetMatrix(microbit.DisplayHeart).Display(ctx).Buzz(ctx, 400).Wait(ctx)
 
-	// set LED matrix, non-zero values are true and will light up LEDs,
-	// then display this on LED matrix, start a buzzer simultaneously,
-	// and wait for button press.
-	device.SetMatrix([microbit.NumRows][microbit.NumCols]uint8{
-		{0, 1, 0, 1, 0},
-		{1, 0, 1, 0, 1},
-		{0, 1, 0, 1, 0},
-		{0, 0, 1, 0, 0},
-		{0, 0, 0, 0, 0},
-	},
-	).Display(ctx).Buzz(ctx, 400).Wait(ctx)
-
-	time.Sleep(time.Millisecond * 250)
 	ctx = device.OnButtonPress()
-	device.SetMatrix([microbit.NumRows][microbit.NumCols]uint8{
-		{1, 0, 0, 0, 0},
-		{0, 1, 0, 0, 0},
-		{0, 0, 1, 0, 0},
-		{0, 0, 0, 1, 0},
-		{0, 0, 0, 0, 1},
-	},
-	).Display(ctx).Buzz(ctx, 200).Wait(ctx)
+	device.SetMatrix(microbit.DisplaySquare).Display(ctx).Buzz(ctx, 200).Wait(ctx)
 
-	time.Sleep(time.Millisecond * 250)
 	ctx = device.OnButtonPress()
-	device.SetMatrix([microbit.NumRows][microbit.NumCols]uint8{
+	device.SetMatrix(microbit.Display{
 		{1, 1, 0, 1, 1},
 		{1, 1, 0, 1, 1},
 		{1, 1, 1, 1, 1},
@@ -76,17 +60,27 @@ func main() {
 	},
 	).Display(ctx).Wait(ctx)
 
-	time.Sleep(time.Millisecond * 250)
 	ctx = context.Background()
-	device.SetMatrix([microbit.NumRows][microbit.NumCols]uint8{
-		{0, 0, 0, 0, 0},
-		{0, 0, 0, 0, 0},
-		{0, 0, 0, 0, 0},
-		{0, 0, 0, 0, 0},
-		{0, 0, 0, 0, 0},
-	},
-	).Display(ctx)
+	device.SetMatrix(microbit.DisplayZeros).Display(ctx)
+}
+```
 
-	time.Sleep(time.Second)
+### display temperature
+```go
+package main
+
+import (
+	"github.com/kubetrail/microbit"
+)
+
+func main() {
+	device := microbit.NewDevice()
+	ctx := device.OnButtonPress()
+	device.SetMatrix(microbit.DisplayLeftArrow).Display(ctx).Wait(ctx)
+
+	for {
+		ctx = device.OnButtonPress()
+		microbit.NewDevice().DisplayTemp(ctx).Wait(ctx).Wait(device.OnButtonPress())
+	}
 }
 ```
